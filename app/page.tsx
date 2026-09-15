@@ -50,10 +50,12 @@ type Mode = "file" | "text" | "url";
 // export. `id` is null when the library couldn't be written to.
 type Resolved = { id: number | null; title: string; text: string; source: string | null };
 
-const MODES: { id: Mode; label: string }[] = [
-  { id: "file", label: "Upload document" },
-  { id: "text", label: "Paste text" },
-  { id: "url", label: "Web link" },
+// `short` keeps all four pills on one line on a phone; the full label comes
+// back as soon as there is room for it, and names the button either way.
+const MODES: { id: Mode; label: string; short: string }[] = [
+  { id: "file", label: "Upload document", short: "Upload" },
+  { id: "text", label: "Paste text", short: "Paste" },
+  { id: "url", label: "Web link", short: "Link" },
 ];
 
 // lucide-react no longer ships brand marks, so the octocat glyph is inlined.
@@ -321,14 +323,14 @@ export default function Home() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-6 py-16">
+    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 sm:py-16">
       <header className="space-y-2">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             {/* The heading beside it already names the app, so the mark is
                 decorative and stays out of the accessibility tree. */}
             <Image src="/icon.png" alt="" width={36} height={36} priority className="h-9 w-9 shrink-0" />
-            <h1 className="truncate text-3xl font-bold tracking-tight">Document to Speech</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Document to Speech</h1>
           </div>
           <a
             href={REPO_URL}
@@ -384,18 +386,21 @@ export default function Home() {
             key={m.id}
             onClick={() => setMode(m.id)}
             aria-pressed={mode === m.id}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${FOCUS_RING} ${mode === m.id
+            aria-label={m.label}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium transition sm:px-4 ${FOCUS_RING} ${mode === m.id
               ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
               : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
               }`}
           >
-            {m.label}
+            <span className="sm:hidden">{m.short}</span>
+            <span className="hidden sm:inline">{m.label}</span>
           </button>
         ))}
-        {/* Not a way of adding a document, so it sits apart from the modes. */}
+        {/* Not a way of adding a document, so it sits apart from the modes —
+            but only once the row is wide enough to keep them on one line. */}
         <Link
           href="/library"
-          className={`ml-auto rounded-full bg-zinc-100 px-4 py-1.5 text-sm font-medium text-zinc-600 transition hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 ${FOCUS_RING}`}
+          className={`rounded-full bg-zinc-100 px-3 py-1.5 text-sm sm:ml-auto sm:px-4 font-medium text-zinc-600 transition hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 ${FOCUS_RING}`}
         >
           Library
         </Link>
@@ -512,7 +517,12 @@ export default function Home() {
             onChange={(e) => setPodcast(e.target.checked)}
             className="h-4 w-4 accent-blue-600"
           />
-          Podcast mode for MP3 — two voices alternate by paragraph
+          {/* Only the trailing detail is dropped on a phone, so the line
+              still says which output the mode applies to. */}
+          <span className="sm:hidden">Podcast mode for MP3 — two voices</span>
+          <span className="hidden sm:inline">
+            Podcast mode for MP3 — two voices alternate by paragraph
+          </span>
         </label>
         {podcast && (
           <select
