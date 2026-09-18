@@ -940,8 +940,8 @@ export default function Reader({
   let index = -1;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-8">
-      <div className="sticky top-0 z-10 -mx-6 border-b border-zinc-200 bg-white/90 px-6 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
+    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-8 sm:px-6">
+      <div className="sticky top-0 z-10 -mx-4 border-b border-zinc-200 bg-white/90 px-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90 sm:-mx-6 sm:px-6">
         <div className="flex flex-wrap items-center gap-3 py-3">
           <button
             onClick={onClose}
@@ -1004,7 +1004,7 @@ export default function Reader({
             </p>
           </div>
 
-          <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
             <select
               value={voice}
               onChange={(e) => changeVoice(e.target.value)}
@@ -1044,7 +1044,7 @@ export default function Reader({
               </button>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex w-full flex-wrap items-center gap-0.5 sm:w-auto sm:flex-nowrap sm:gap-1">
               <button
                 onClick={() => step(-1)}
                 disabled={current === 0}
