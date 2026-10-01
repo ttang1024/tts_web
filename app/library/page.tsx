@@ -29,7 +29,7 @@ import FilterBar from "./FilterBar";
 import SelectionToolbar from "./SelectionToolbar";
 import MiniPlayerBar from "./MiniPlayerBar";
 import StorageBar from "./StorageBar";
-import { useQueuePlayback, AUTO_STOP_OPTIONS } from "./useQueuePlayback";
+import { useQueuePlayback } from "./useQueuePlayback";
 
 const FOCUS_RING =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950";
@@ -335,7 +335,6 @@ export default function Library() {
         isMarkdown={reading.isMarkdown}
         initialIndex={reading.initialIndex}
         text={reading.text}
-        stopSignal={queuePlayback.stopSignal}
         onProgress={(i) => patchDocument(reading.id, { progressIndex: i })}
         onVoiceChange={(v) => patchDocument(reading.id, { voice: v })}
         onTextSave={(t) => setReading((r) => (r ? { ...r, text: t } : r))}
@@ -414,21 +413,6 @@ export default function Library() {
               className="h-3.5 w-3.5 accent-blue-600"
             />
             Loop playback
-          </label>
-          <label className="flex items-center gap-1.5">
-            Auto-stop
-            <select
-              value={queuePlayback.autoStopMinutes}
-              onChange={(e) => queuePlayback.setAutoStopMinutes(Number(e.target.value))}
-              aria-label="Auto-stop playback after"
-              className={`rounded-md border border-zinc-300 bg-transparent px-1.5 py-1 outline-none dark:border-zinc-700 dark:bg-zinc-900 ${FOCUS_RING}`}
-            >
-              {AUTO_STOP_OPTIONS.map((m) => (
-                <option key={m} value={m}>
-                  {m === 0 ? "Off" : `${m} min`}
-                </option>
-              ))}
-            </select>
           </label>
         </div>
       )}

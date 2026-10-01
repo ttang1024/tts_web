@@ -3,9 +3,12 @@
 import { SkipBack, SkipForward, Play, Pause, Square, Repeat, LoaderCircle } from "lucide-react";
 import type { DocumentSummary } from "@/lib/documents";
 import { useMiniPlayer } from "./useMiniPlayer";
+import { useSleepTimer } from "../reader/useSleepTimer";
+import SleepTimerButton, { type SleepBoundaryOption } from "../reader/SleepTimerButton";
 
 const FOCUS_RING =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950";
+const SLEEP_BOUNDARIES: SleepBoundaryOption[] = [{ boundary: "document", label: "End of this document" }];
 
 type Props = {
   queue: DocumentSummary[];
@@ -20,7 +23,14 @@ type Props = {
 // Plays a Play all / Play selected queue inline on the library list, so
 // starting playback doesn't navigate away to the full Reader.
 export default function MiniPlayerBar({ queue, queueIndex, loopQueue, onEnded, onNext, onPrev, onStop }: Props) {
-  const player = useMiniPlayer(queue, queueIndex, onEnded);
+  // Lives here rather than per document, so a timer set on the first file
+  // keeps counting down as the queue moves on. "End of document" holds the
+  // queue on the file that just finished instead of advancing it.
+  const player = useMiniPlayer(queue, queueIndex, () => {
+    if (sleep.boundary === "document") sleep.cancel();
+    else onEnded();
+  });
+  const sleep = useSleepTimer(player.playing, player.stop, player.setVolume);
   const canPrev = queueIndex > 0 || loopQueue;
   const canNext = queueIndex < queue.length - 1 || loopQueue;
 
@@ -71,6 +81,11 @@ export default function MiniPlayerBar({ queue, queueIndex, loopQueue, onEnded, o
           >
             <SkipForward className="h-4 w-4" />
           </button>
+          <SleepTimerButton
+            sleep={sleep}
+            placement="above"
+            boundaries={SLEEP_BOUNDARIES}
+          />
           <button
             onClick={onStop}
             aria-label="Stop queue"

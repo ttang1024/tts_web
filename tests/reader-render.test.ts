@@ -41,6 +41,7 @@ test("the reader offers its controls", () => {
     "Find in document",
     "Keyboard shortcuts",
     "Reading settings",
+    "Sleep timer",
     "Download MP3",
     "Download text",
   ]) {

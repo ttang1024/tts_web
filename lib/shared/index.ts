@@ -15,3 +15,13 @@ export {
   formatDuration,
 } from "./time";
 export { PlaybackController, type PlaybackAdapter } from "./playback";
+export {
+  SLEEP_PRESETS,
+  SLEEP_MAX_MINUTES,
+  SLEEP_FADE_MS,
+  deadlineAfterMinutes,
+  deadlineAtClock,
+  fadeVolume,
+  formatCountdown,
+  nextChapterStart,
+} from "./sleep";

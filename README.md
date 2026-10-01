@@ -16,7 +16,10 @@ Live at **<https://ttsweb-one.vercel.app>**.
 - Bookmarks (`b`), highlights (`h`), chapters, and find (`/`) that jumps playback
   to the match. `?` lists every shortcut.
 - Streaming MP3 export, cancellable mid-render; text download, queue playback,
-  sleep timer, and media keys.
+  and media keys.
+- A sleep timer in the reader and the queue player: a preset or custom duration,
+  a clock time, or the end of the chapter/document, with a live countdown and a
+  30-second fade-out.
 - Heard sentences are cached, so re-reading is instant and works offline.
 - Export the library to JSON and merge it back on another browser.
 

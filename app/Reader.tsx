@@ -22,6 +22,7 @@ import {
   segmentText,
   segmentMarkdown,
   stripMarkdown,
+  nextChapterStart,
   PlaybackController,
   type PlaybackAdapter,
 } from "@/lib/shared";
@@ -61,15 +62,17 @@ import {
 import { saveVoicePref } from "@/lib/voicePref";
 import ErrorBanner from "./ErrorBanner";
 import { useBookmarks } from "./reader/useBookmarks";
-import { useChapters } from "./reader/useChapters";
+import { chapterIndex, useChapters } from "./reader/useChapters";
 import { useMediaSession } from "./reader/useMediaSession";
 import { useSleepTimer } from "./reader/useSleepTimer";
+import SleepTimerButton, { type SleepBoundaryOption } from "./reader/SleepTimerButton";
 import { useFind } from "./reader/useFind";
 
 const FONT_SIZES = [15, 17, 19, 22];
 const LINE_HEIGHTS = [1.6, 1.85, 2.1];
-const SLEEP_OPTIONS = [0, 15, 30, 60];
 const PREFS_KEY = "tts-reader-prefs";
+const DOCUMENT_END: SleepBoundaryOption = { boundary: "document", label: "End of document" };
+const CHAPTER_END: SleepBoundaryOption = { boundary: "chapter", label: "End of chapter" };
 // Heading font scale by level (1-6), relative to the reader's base text size.
 const HEADING_SCALE = [1.8, 1.5, 1.3, 1.15, 1.05, 1];
 const FOCUS_RING =
@@ -124,9 +127,6 @@ type Props = {
   // queue and keep reading just this document.
   queueInfo?: { index: number; total: number; loop: boolean } | null;
   onStopQueue?: () => void;
-  // Bumping this value pauses playback — used by the library's auto-stop
-  // timer, which spans the whole queue rather than a single document.
-  stopSignal?: number;
 };
 
 // Finds where a timed word starts in the sentence, from `from` onward. Tries
@@ -397,7 +397,6 @@ export default function Reader({
   onEnded,
   queueInfo = null,
   onStopQueue,
-  stopSignal,
 }: Props) {
   // Segmentation is held locally so an in-place edit can re-segment without a
   // round trip through the parent. Kept in sync if the parent swaps documents.
@@ -484,6 +483,10 @@ export default function Reader({
   onEndedRef.current = onEnded;
   const loopRef = useRef(loop);
   loopRef.current = loop;
+  // A "stop at the end of…" sleep timer: the first sentence it must not
+  // start (Infinity when none is set), and how to clear it once it has
+  // stopped there. Assigned below, once chapters and offsets are known.
+  const sleepStopRef = useRef({ before: Infinity, cancel: () => {} });
 
   // Keep the controller's view of state current every render — mirrors the
   // stateRef pattern the readers used before this was extracted: async
@@ -569,6 +572,13 @@ export default function Reader({
 
     audio.onended = () => {
       const i = currentRef.current;
+      // A sleep timer set to "end of chapter/document" stops here, before
+      // looping or advancing a queue.
+      if (i + 1 >= sleepStopRef.current.before) {
+        controller.stop();
+        sleepStopRef.current.cancel();
+        return;
+      }
       if (i + 1 < flatRef.current.length) void controller.playFrom(i + 1);
       else if (loopRef.current && flatRef.current.length > 0) {
         // End of the document with looping on: start over from the top and
@@ -666,22 +676,9 @@ export default function Reader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { sleepMinutes, setSleep } = useSleepTimer(playing, stop);
-
-  // External stop request (the library's queue-wide auto-stop timer). Only
-  // acts once `stopSignal` actually changes from the value last seen, so a
-  // signal inherited from a prior document in the queue doesn't immediately
-  // pause the next one. Compares against a stored value rather than a
-  // "have I run yet" boolean ref: React's Strict Mode double-invokes this
-  // effect on mount, and a boolean flag gets consumed by the phantom first
-  // invocation, leaving the real one to call stop() right after playback
-  // starts.
-  const lastStopSignalRef = useRef(stopSignal);
-  useEffect(() => {
-    if (stopSignal === lastStopSignalRef.current) return;
-    lastStopSignalRef.current = stopSignal;
-    controllerRef.current?.stop();
-  }, [stopSignal]);
+  const sleep = useSleepTimer(playing, stop, (v) => {
+    if (audioRef.current) audioRef.current.volume = v;
+  });
 
   useEffect(() => {
     try {
@@ -697,7 +694,7 @@ export default function Reader({
     flatRef,
     setError
   );
-  const { chapters, chapterIndex } = useChapters(documentId);
+  const chapters = useChapters(documentId);
   useMediaSession(docTitle, playing, loading, togglePlay, step);
 
   // Don't leave a render streaming into a closed reader.
@@ -872,6 +869,20 @@ export default function Reader({
   const remaining = formatDuration(
     estimateListeningSeconds(charsBefore[flat.length] - charsBefore[current], speed, rate)
   );
+
+  const chapterStarts = useMemo(
+    () => chapters.map((ch) => chapterIndex(ch, charsBefore, flat.length)),
+    [chapters, charsBefore, flat.length]
+  );
+  sleepStopRef.current = {
+    before:
+      sleep.boundary === "chapter"
+        ? nextChapterStart(chapterStarts, current, flat.length)
+        : sleep.boundary === "document"
+          ? flat.length
+          : Infinity,
+    cancel: sleep.cancel,
+  };
 
   function jumpToChapter(chapter: Chapter) {
     selectSentence(chapterIndex(chapter, charsBefore, flat.length));
@@ -1086,6 +1097,11 @@ export default function Reader({
               >
                 <Repeat className="h-4 w-4" />
               </button>
+              <SleepTimerButton
+                sleep={sleep}
+                placement="below"
+                boundaries={chapters.length > 1 ? [CHAPTER_END, DOCUMENT_END] : [DOCUMENT_END]}
+              />
               <button
                 onClick={() => (findOpen ? closeFind() : openFind())}
                 aria-label="Find in document"
@@ -1316,20 +1332,6 @@ export default function Reader({
                 </button>
               ))}
             </div>
-            <label className="flex items-center gap-1.5">
-              <span className="text-zinc-500">Sleep timer</span>
-              <select
-                value={sleepMinutes}
-                onChange={(e) => setSleep(Number(e.target.value))}
-                className={`rounded-md border border-zinc-300 bg-transparent px-1.5 py-1 outline-none dark:border-zinc-700 dark:bg-zinc-900 ${FOCUS_RING}`}
-              >
-                {SLEEP_OPTIONS.map((m) => (
-                  <option key={m} value={m}>
-                    {m === 0 ? "Off" : `${m} min`}
-                  </option>
-                ))}
-              </select>
-            </label>
             <span className="text-zinc-400">
               Shortcuts: space play/pause · arrow keys sentence · +/- speed · b bookmark · h highlight
             </span>

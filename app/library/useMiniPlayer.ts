@@ -30,6 +30,7 @@ export function useMiniPlayer(queue: DocumentSummary[] | null, queueIndex: numbe
   const [error, setError] = useState<string | null>(null);
 
   const controllerRef = useRef<PlaybackController<SentenceAudio> | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const flatRef = useRef<string[]>([]);
   const isMarkdownRef = useRef(false);
   const voiceRef = useRef(VOICES[0].id);
@@ -49,6 +50,7 @@ export function useMiniPlayer(queue: DocumentSummary[] | null, queueIndex: numbe
     setError(null);
 
     const audio = new Audio();
+    audioRef.current = audio;
     const adapter: PlaybackAdapter<SentenceAudio> = {
       fetchSource(index, voiceId) {
         const text = isMarkdownRef.current
@@ -125,6 +127,7 @@ export function useMiniPlayer(queue: DocumentSummary[] | null, queueIndex: numbe
       audio.onended = null;
       controller.dispose();
       if (controllerRef.current === controller) controllerRef.current = null;
+      if (audioRef.current === audio) audioRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId]);
@@ -149,5 +152,11 @@ export function useMiniPlayer(queue: DocumentSummary[] | null, queueIndex: numbe
     loading,
     error,
     togglePlay: () => controllerRef.current?.togglePlay(),
+    stop: () => controllerRef.current?.stop(),
+    // A fresh document gets a fresh <audio> at full volume; a sleep timer
+    // mid-fade sets it again on its next tick.
+    setVolume: (v: number) => {
+      if (audioRef.current) audioRef.current.volume = v;
+    },
   };
 }
