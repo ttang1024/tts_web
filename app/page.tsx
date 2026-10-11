@@ -20,7 +20,7 @@ import {
   safeFilename,
   synthesizeSentence,
 } from "@/lib/tts";
-import { loadVoicePref, saveVoicePref } from "@/lib/voicePref";
+import { loadSpeedPref, loadVoicePref, saveVoicePref } from "@/lib/voicePref";
 import {
   estimateListeningSeconds,
   estimateMp3Bytes,
@@ -247,6 +247,8 @@ export default function Home() {
       form.append("voice", voice);
       form.append("text", resolved.text);
       form.append("name", resolved.title);
+      const speed = loadSpeedPref();
+      form.append("speed", String(speed));
       // The route strips Markdown symbols out of the speech when the source
       // says it's Markdown; pass the original filename along so it still can.
       if (resolved.source) form.append("source", resolved.source);
@@ -258,7 +260,7 @@ export default function Home() {
       setExportPercent(0);
       const { blob, filename } = await generateMp3(form, {
         signal: controller.signal,
-        expectedBytes: estimateMp3Bytes(resolved.text),
+        expectedBytes: estimateMp3Bytes(resolved.text) / speed,
         onProgress: (fraction) => setExportPercent(Math.round(fraction * 100)),
       });
       setResult({

@@ -8,6 +8,14 @@ export function adjustSpeed(speed: number, delta: number): number {
   return Math.min(Math.max(next, SPEED_MIN), SPEED_MAX);
 }
 
+// Bounds an untrusted speed (a stored pref, a form field) to the supported range,
+// falling back to 1x for anything that isn't a finite number.
+export function clampSpeed(speed: unknown): number {
+  const value = typeof speed === "string" ? parseFloat(speed) : speed;
+  if (typeof value !== "number" || !Number.isFinite(value)) return 1;
+  return Math.min(Math.max(value, SPEED_MIN), SPEED_MAX);
+}
+
 export function formatSpeed(speed: number): string {
   return `${parseFloat(speed.toFixed(2))}×`;
 }

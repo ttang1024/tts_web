@@ -31,14 +31,14 @@ const TICK_MS = 250;
 // Boundary modes stop between sentences, which is already a clean break —
 // the caller checks `boundary` before advancing and calls `cancel()` once
 // it has stopped there.
-export function useSleepTimer(playing: boolean, stop: () => void, setVolume: (v: number) => void) {
+export function useSleepTimer(stop: () => void, setVolume: (v: number) => void) {
   const [mode, setMode] = useState<SleepMode>({ kind: "off" });
   const [remainingSeconds, setRemainingSeconds] = useState(0);
 
   // Read through a ref so the tick effect depends only on the deadline, not
   // on the identity of callbacks the caller recreates every render.
-  const latest = useRef({ playing, stop, setVolume });
-  latest.current = { playing, stop, setVolume };
+  const latest = useRef({ stop, setVolume });
+  latest.current = { stop, setVolume };
 
   const deadline = mode.kind === "deadline" ? mode.deadline : null;
 
@@ -48,9 +48,12 @@ export function useSleepTimer(playing: boolean, stop: () => void, setVolume: (v:
     const tick = () => {
       const remaining = deadline - Date.now();
       if (remaining <= 0) {
-        // Only stop what is actually playing — a deadline that passes while
-        // paused simply expires.
-        if (latest.current.playing) latest.current.stop();
+        // Stop unconditionally rather than only when `playing`: while looping
+        // or advancing a queue there are moments between sentences/documents
+        // where nothing is playing yet but playback is about to resume, and
+        // letting the deadline expire there would leave it playing forever.
+        // Stopping something already paused is harmless.
+        latest.current.stop();
         latest.current.setVolume(1);
         setMode({ kind: "off" });
         return;

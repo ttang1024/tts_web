@@ -1,4 +1,4 @@
-import { normalizeText, stripMarkdown, chunkText } from "@/lib/shared";
+import { normalizeText, stripMarkdown, chunkText, clampSpeed } from "@/lib/shared";
 import { resolveSource, isMarkdownSource, resolveOcrLangs } from "@/lib/server/extract";
 import { assertWithinLimit } from "@/lib/server/validate";
 import { appErrorResponse } from "@/lib/server/http-errors";
@@ -56,6 +56,8 @@ export async function POST(request: Request): Promise<Response> {
     const voice = (formData.get("voice") as string) || DEFAULT_VOICE;
     const mode = formData.get("mode");
     const voice2 = (formData.get("voice2") as string) || null;
+    // Playback speed baked into the file, clamped to what the reader offers.
+    const speed = clampSpeed(formData.get("speed") ?? 1);
     // OCR language(s) for image uploads: explicit codes, or inferred from the
     // chosen voice's language. Always falls back to English.
     const ocrLangs = resolveOcrLangs(
@@ -94,7 +96,7 @@ export async function POST(request: Request): Promise<Response> {
 
     // Stream chunks as they're synthesized so the download starts immediately
     // rather than buffering the whole file in the function first.
-    return new Response(streamSynthesis(jobs), {
+    return new Response(streamSynthesis(jobs, speed), {
       headers: {
         "Content-Type": "audio/mpeg",
         "Cache-Control": "no-store",

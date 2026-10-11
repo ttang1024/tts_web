@@ -59,7 +59,7 @@ import {
   downloadBlob,
   safeFilename,
 } from "@/lib/tts";
-import { saveVoicePref } from "@/lib/voicePref";
+import { READER_PREFS_KEY as PREFS_KEY, saveVoicePref } from "@/lib/voicePref";
 import ErrorBanner from "./ErrorBanner";
 import { useBookmarks } from "./reader/useBookmarks";
 import { chapterIndex, useChapters } from "./reader/useChapters";
@@ -70,7 +70,6 @@ import { useFind } from "./reader/useFind";
 
 const FONT_SIZES = [15, 17, 19, 22];
 const LINE_HEIGHTS = [1.6, 1.85, 2.1];
-const PREFS_KEY = "tts-reader-prefs";
 const DOCUMENT_END: SleepBoundaryOption = { boundary: "document", label: "End of document" };
 const CHAPTER_END: SleepBoundaryOption = { boundary: "chapter", label: "End of chapter" };
 // Heading font scale by level (1-6), relative to the reader's base text size.
@@ -676,7 +675,7 @@ export default function Reader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const sleep = useSleepTimer(playing, stop, (v) => {
+  const sleep = useSleepTimer(stop, (v) => {
     if (audioRef.current) audioRef.current.volume = v;
   });
 
@@ -760,6 +759,7 @@ export default function Reader({
       const name = safeFilename(docTitle);
       const blob = await synthesizeTextToMp3(speech, voice, name, {
         signal: controller.signal,
+        speed,
         onProgress: (fraction) => setDownloadPercent(Math.round(fraction * 100)),
       });
       downloadBlob(blob, `${name}.mp3`);

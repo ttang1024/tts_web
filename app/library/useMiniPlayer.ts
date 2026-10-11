@@ -38,10 +38,15 @@ export function useMiniPlayer(queue: DocumentSummary[] | null, queueIndex: numbe
   currentRef.current = current;
   const onEndedRef = useRef(onEnded);
   onEndedRef.current = onEnded;
+  // Set by stop() (e.g. a sleep timer firing) so a document still being
+  // fetched — the gap while a looping queue moves to its next file — loads
+  // paused instead of autoplaying past the stop.
+  const haltedRef = useRef(false);
 
   useEffect(() => {
     if (docId == null) return;
     let cancelled = false;
+    haltedRef.current = false;
     setTitle(doc?.title ?? "");
     setCurrent(0);
     setTotal(0);
@@ -110,9 +115,18 @@ export function useMiniPlayer(queue: DocumentSummary[] | null, queueIndex: numbe
         voiceRef.current = voice;
         setTitle(full.title);
         setTotal(flat.length);
-        const startIndex = Math.min(Math.max(full.progress_index, 0), flat.length - 1);
+        // A document saved at its last sentence was finished (that's where a
+        // full play-through leaves it), so it starts over — otherwise a
+        // looping queue coming back round would replay only that sentence.
+        const saved = Math.max(full.progress_index, 0);
+        const startIndex = saved >= flat.length - 1 ? 0 : saved;
         controller.sync({ voice, speed: 1, current: startIndex, playing: false, loading: false }, flat.length);
         if (cancelled) return;
+        if (haltedRef.current) {
+          setCurrent(startIndex);
+          setLoading(false);
+          return;
+        }
         void controller.playFrom(startIndex, voice);
       } catch (err) {
         if (!cancelled) {
@@ -151,8 +165,20 @@ export function useMiniPlayer(queue: DocumentSummary[] | null, queueIndex: numbe
     playing,
     loading,
     error,
-    togglePlay: () => controllerRef.current?.togglePlay(),
-    stop: () => controllerRef.current?.stop(),
+    togglePlay: () => {
+      haltedRef.current = false;
+      controllerRef.current?.togglePlay();
+    },
+    stop: () => {
+      haltedRef.current = true;
+      controllerRef.current?.stop();
+    },
+    // Plays the current document again from the top — for a looping queue of
+    // one, where advancing the index to itself wouldn't reload anything.
+    restart: () => {
+      haltedRef.current = false;
+      void controllerRef.current?.playFrom(0);
+    },
     // A fresh document gets a fresh <audio> at full volume; a sleep timer
     // mid-fade sets it again on its next tick.
     setVolume: (v: number) => {

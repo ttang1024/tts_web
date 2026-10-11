@@ -4,7 +4,7 @@
 // talks to a separate API server any more.
 export { normalizeText, segmentText, segmentMarkdown, stripMarkdown, chunkText } from "./segment";
 export { VOICES, VOICE_IDS, isKnownVoice, type Voice } from "./voices";
-export { SPEED_MIN, SPEED_MAX, SPEED_STEP, adjustSpeed, formatSpeed } from "./speed";
+export { SPEED_MIN, SPEED_MAX, SPEED_STEP, adjustSpeed, clampSpeed, formatSpeed } from "./speed";
 export { normalizeUrl } from "./url";
 export { foldForSearch, findMatches, nearestMatch, stepMatch } from "./search";
 export {

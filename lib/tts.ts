@@ -81,6 +81,11 @@ export type ExportOptions = {
   expectedBytes?: number;
 };
 
+export type TextExportOptions = ExportOptions & {
+  // Speaking rate baked into the MP3 (1 = normal).
+  speed?: number;
+};
+
 // Whether a caught error is this export being cancelled rather than failing —
 // a cancel is a thing the person did, not something to show them as an error.
 export function isAbortError(err: unknown): boolean {
@@ -128,14 +133,16 @@ export async function synthesizeTextToMp3(
   text: string,
   voice: string,
   name: string,
-  options: ExportOptions = {}
+  { speed = 1, ...options }: TextExportOptions = {}
 ): Promise<Blob> {
   const form = new FormData();
   form.append("text", text);
   form.append("voice", voice);
   form.append("name", name);
+  form.append("speed", String(speed));
   const { blob } = await generateMp3(form, {
-    expectedBytes: estimateMp3Bytes(text),
+    // A faster rate means a shorter, smaller file.
+    expectedBytes: estimateMp3Bytes(text) / speed,
     ...options,
   });
   return blob;

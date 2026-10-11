@@ -4,9 +4,11 @@
 // server-rendered page can pick it up on mount. A document's own saved voice
 // still wins over this.
 
-import { VOICES, isKnownVoice } from "@/lib/shared";
+import { VOICES, isKnownVoice, clampSpeed } from "@/lib/shared";
 
 const VOICE_KEY = "tts-voice";
+// The reader's typography + speed preferences, written by the reader.
+export const READER_PREFS_KEY = "tts-reader-prefs";
 
 function readLocal(): string | null {
   if (typeof window === "undefined") return null;
@@ -31,5 +33,16 @@ export function saveVoicePref(id: string) {
     localStorage.setItem(VOICE_KEY, id);
   } catch {
     // Storage disabled or over quota; the preference just doesn't persist.
+  }
+}
+
+// The reading speed last set in the reader, so MP3 exports started outside
+// it (the library, the home page) match what the listener hears in it.
+export function loadSpeedPref(): number {
+  if (typeof window === "undefined") return 1;
+  try {
+    return clampSpeed(JSON.parse(localStorage.getItem(READER_PREFS_KEY) ?? "{}").speed);
+  } catch {
+    return 1;
   }
 }

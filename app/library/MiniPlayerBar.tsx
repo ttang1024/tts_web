@@ -25,12 +25,15 @@ type Props = {
 export default function MiniPlayerBar({ queue, queueIndex, loopQueue, onEnded, onNext, onPrev, onStop }: Props) {
   // Lives here rather than per document, so a timer set on the first file
   // keeps counting down as the queue moves on. "End of document" holds the
-  // queue on the file that just finished instead of advancing it.
+  // queue on the file that just finished instead of advancing it. A looping
+  // queue of one file restarts it here, since moving the index from 0 to 0
+  // wouldn't reload anything.
   const player = useMiniPlayer(queue, queueIndex, () => {
     if (sleep.boundary === "document") sleep.cancel();
+    else if (loopQueue && queue.length === 1) player.restart();
     else onEnded();
   });
-  const sleep = useSleepTimer(player.playing, player.stop, player.setVolume);
+  const sleep = useSleepTimer(player.stop, player.setVolume);
   const canPrev = queueIndex > 0 || loopQueue;
   const canNext = queueIndex < queue.length - 1 || loopQueue;
 

@@ -148,7 +148,7 @@ export function sanitizeForSsml(text: string): string {
 // the audio stream cleanly even when a request fails or the connection drops
 // (it pushes EOF, not an error), so empty audio is treated as a failure and
 // retried rather than silently dropped.
-async function synthesizeChunk(text: string, voice: string): Promise<Buffer> {
+async function synthesizeChunk(text: string, voice: string, rate: number): Promise<Buffer> {
   const ssmlText = sanitizeForSsml(text);
   if (!ssmlText.trim()) return Buffer.alloc(0);
 
@@ -157,7 +157,7 @@ async function synthesizeChunk(text: string, voice: string): Promise<Buffer> {
     const tts = new MsEdgeTTS();
     try {
       await tts.setMetadata(voice, FORMAT);
-      const { audioStream } = tts.toStream(ssmlText);
+      const { audioStream } = tts.toStream(ssmlText, { rate });
       const mp3 = await streamToBuffer(audioStream);
       if (mp3.length > 0) return mp3;
       lastError = new Error("Synthesis returned no audio.");
@@ -173,7 +173,7 @@ async function synthesizeChunk(text: string, voice: string): Promise<Buffer> {
 // Starts the worker pool and returns one promise per job, in order. Each chunk
 // uses a fresh connection (see synthesizeChunk) so a dropped websocket can't
 // silently truncate the rest of a reused connection's work.
-function startPool(jobs: AudioJob[]): Promise<Buffer>[] {
+function startPool(jobs: AudioJob[], rate: number): Promise<Buffer>[] {
   const deferred = jobs.map(() => {
     let resolve!: (b: Buffer) => void;
     let reject!: (e: unknown) => void;
@@ -191,7 +191,7 @@ function startPool(jobs: AudioJob[]): Promise<Buffer>[] {
         const index = next++;
         const { text, voice } = jobs[index];
         try {
-          deferred[index].resolve(await synthesizeChunk(text, voice));
+          deferred[index].resolve(await synthesizeChunk(text, voice, rate));
         } catch (err) {
           deferred[index].reject(err);
         }
@@ -210,9 +210,11 @@ function startPool(jobs: AudioJob[]): Promise<Buffer>[] {
 
 // Streams MP3 frames in job order as soon as each chunk is ready, so large
 // exports start downloading immediately instead of buffering server-side —
-// which also keeps the function well inside its response time budget.
-export function streamSynthesis(jobs: AudioJob[]): ReadableStream<Uint8Array> {
-  const promises = startPool(jobs);
+// which also keeps the function well inside its response time budget. `rate`
+// is the SSML prosody rate (1 = normal), so an export plays at the speed the
+// listener chose in the reader rather than always at 1x.
+export function streamSynthesis(jobs: AudioJob[], rate = 1): ReadableStream<Uint8Array> {
+  const promises = startPool(jobs, rate);
   let index = 0;
   return new ReadableStream<Uint8Array>({
     async pull(controller) {
@@ -227,5 +229,5 @@ export function streamSynthesis(jobs: AudioJob[]): ReadableStream<Uint8Array> {
 }
 
 export async function synthesizeAll(jobs: AudioJob[]): Promise<Buffer> {
-  return Buffer.concat(await Promise.all(startPool(jobs)));
+  return Buffer.concat(await Promise.all(startPool(jobs, 1)));
 }

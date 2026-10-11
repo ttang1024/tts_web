@@ -21,7 +21,7 @@ import {
   type DocumentSummary,
   type ListFilters,
 } from "@/lib/documents";
-import { loadVoicePref } from "@/lib/voicePref";
+import { loadSpeedPref, loadVoicePref } from "@/lib/voicePref";
 import DocumentRow from "./DocumentRow";
 import MergeDialog from "./MergeDialog";
 import DeleteDialog from "./DeleteDialog";
@@ -304,7 +304,7 @@ export default function Library() {
         speech,
         full.voice ?? loadVoicePref(),
         name,
-        options
+        { ...options, speed: loadSpeedPref() }
       );
       downloadBlob(blob, `${name}.mp3`);
     } catch (err) {
